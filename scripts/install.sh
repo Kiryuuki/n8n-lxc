@@ -133,8 +133,8 @@ install_n8n_and_browser_packages() {
   npm_install_with_retry --prefix "${APP_DIR}/custom" playwright playwright-core n8n-nodes-playwright
   chown -R n8n:n8n "${APP_DIR}"
   install_playwright_system_packages
-  npx --prefix "${APP_DIR}/custom" playwright install-deps chromium
-  sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${BROWSERS_DIR}" bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium"
+  npx --prefix "${APP_DIR}/custom" playwright install-deps
+  sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${BROWSERS_DIR}" bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
 }
 
 configure_postgres() {

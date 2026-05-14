@@ -44,8 +44,8 @@ Secrets you need before production:
 - `playwright`
 - `playwright-core`
 - `n8n-nodes-playwright`
-- Chromium browser binaries for the `n8n` user
-- Chromium Linux system dependencies through Playwright
+- Chromium, Firefox, and WebKit browser binaries for the `n8n` user
+- Playwright Linux system dependencies
 - GTK/Cairo packages required by `n8n-nodes-playwright` startup validation
 - `n8n` system user
 - `/opt/n8n`
@@ -329,11 +329,13 @@ Playwright failed:
 sudo apt-get install -y libxcursor1 libpangocairo-1.0-0 libcairo-gobject2 libgdk-pixbuf-2.0-0
 sudo apt-get install -y libgtk-3-0t64 || sudo apt-get install -y libgtk-3-0
 sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH=/home/n8n/.cache/ms-playwright \
-  npx --prefix /opt/n8n/custom playwright install chromium
-sudo npx --prefix /opt/n8n/custom playwright install-deps chromium
+  npx --prefix /opt/n8n/custom playwright install chromium firefox webkit
+sudo npx --prefix /opt/n8n/custom playwright install-deps
 ```
 
 `n8n-nodes-playwright` expects the browser cache at `/home/n8n/.cache/ms-playwright` during startup. Do not point `PLAYWRIGHT_BROWSERS_PATH` at `/opt/n8n/ms-playwright` unless you also update the community node setup behavior.
+
+Playwright downloads are expected on first install and when Playwright browser revisions change. They should not happen on every n8n restart once Chromium, Firefox, and WebKit are already present.
 
 Browserless failed:
 
