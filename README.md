@@ -364,6 +364,15 @@ npm --version
 sudo bash scripts/install.sh
 ```
 
+Playwright install fails with `spawn sh EACCES`:
+
+```bash
+git pull
+sudo bash scripts/install.sh
+```
+
+This happens when the repo is cloned under `/root` and the installer switches to the `n8n` user before running Playwright. Current installer versions run Playwright from `/opt/n8n/custom`, which the `n8n` user can access.
+
 ## Security Checklist
 
 - Rotate the Supabase service key pasted in chat.

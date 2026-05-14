@@ -53,7 +53,7 @@ check_http() {
 
 check_playwright() {
   sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-${APP_DIR}/ms-playwright}" \
-    node - <<'NODE'
+    bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
 const { chromium } = require('/opt/n8n/custom/node_modules/playwright');
 
 (async () => {
@@ -74,7 +74,7 @@ check_browserless() {
     return
   fi
 
-  sudo -H -u n8n env BROWSERLESS_WS_URL="${BROWSERLESS_WS_URL}" node - <<'NODE'
+  sudo -H -u n8n env BROWSERLESS_WS_URL="${BROWSERLESS_WS_URL}" bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
 const { chromium } = require('/opt/n8n/custom/node_modules/playwright-core');
 
 (async () => {
