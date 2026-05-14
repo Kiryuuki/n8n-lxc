@@ -46,6 +46,7 @@ Secrets you need before production:
 - `n8n-nodes-playwright`
 - Chromium browser binaries for the `n8n` user
 - Chromium Linux system dependencies through Playwright
+- GTK/Cairo packages required by `n8n-nodes-playwright` startup validation
 - `n8n` system user
 - `/opt/n8n`
 - `/etc/n8n/n8n.env`
@@ -325,10 +326,14 @@ sudo -u postgres psql -c "\du"
 Playwright failed:
 
 ```bash
-sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH=/opt/n8n/ms-playwright \
+sudo apt-get install -y libxcursor1 libpangocairo-1.0-0 libcairo-gobject2 libgdk-pixbuf-2.0-0
+sudo apt-get install -y libgtk-3-0t64 || sudo apt-get install -y libgtk-3-0
+sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH=/home/n8n/.cache/ms-playwright \
   npx --prefix /opt/n8n/custom playwright install chromium
 sudo npx --prefix /opt/n8n/custom playwright install-deps chromium
 ```
+
+`n8n-nodes-playwright` expects the browser cache at `/home/n8n/.cache/ms-playwright` during startup. Do not point `PLAYWRIGHT_BROWSERS_PATH` at `/opt/n8n/ms-playwright` unless you also update the community node setup behavior.
 
 Browserless failed:
 
@@ -372,6 +377,21 @@ sudo bash scripts/install.sh
 ```
 
 This happens when the repo is cloned under `/root` and the installer switches to the `n8n` user before running Playwright. Current installer versions run Playwright from `/opt/n8n/custom`, which the `n8n` user can access.
+
+`n8n-nodes-playwright` fails at service startup with missing browser cache:
+
+```bash
+git pull
+sudo bash scripts/install.sh
+grep PLAYWRIGHT_BROWSERS_PATH /etc/n8n/n8n.env
+sudo systemctl restart n8n
+```
+
+Expected value:
+
+```env
+PLAYWRIGHT_BROWSERS_PATH=/home/n8n/.cache/ms-playwright
+```
 
 ## Security Checklist
 

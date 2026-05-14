@@ -8,6 +8,7 @@ NPM_FETCH_RETRY_MINTIMEOUT="${NPM_FETCH_RETRY_MINTIMEOUT:-20000}"
 NPM_FETCH_RETRY_MAXTIMEOUT="${NPM_FETCH_RETRY_MAXTIMEOUT:-120000}"
 NPM_FETCH_TIMEOUT="${NPM_FETCH_TIMEOUT:-300000}"
 APP_DIR="/opt/n8n"
+BROWSERS_DIR="/home/n8n/.cache/ms-playwright"
 ENV_DIR="/etc/n8n"
 ENV_FILE="${ENV_DIR}/n8n.env"
 SERVICE_FILE="/etc/systemd/system/n8n.service"
@@ -28,6 +29,22 @@ install_base_packages() {
   log "Installing base packages"
   apt-get update
   apt-get install -y curl ca-certificates gnupg build-essential postgresql postgresql-contrib openssl sudo git
+}
+
+install_playwright_system_packages() {
+  log "Installing Playwright system packages"
+  apt-get update
+  apt-get install -y \
+    libxcursor1 \
+    libpangocairo-1.0-0 \
+    libcairo-gobject2 \
+    libgdk-pixbuf-2.0-0
+
+  if apt-cache show libgtk-3-0t64 >/dev/null 2>&1; then
+    apt-get install -y libgtk-3-0t64
+  else
+    apt-get install -y libgtk-3-0
+  fi
 }
 
 install_nodejs() {
@@ -104,7 +121,7 @@ create_user_and_dirs() {
     useradd --system --create-home --home-dir /home/n8n --shell /usr/sbin/nologin n8n
   fi
 
-  mkdir -p "${APP_DIR}/custom" "${APP_DIR}/backups" "${APP_DIR}/ms-playwright" "${ENV_DIR}" /opt/obsidian-vault /opt/n8n-backup
+  mkdir -p "${APP_DIR}/custom" "${APP_DIR}/backups" "${BROWSERS_DIR}" "${ENV_DIR}" /opt/obsidian-vault /opt/n8n-backup
   chown -R n8n:n8n "${APP_DIR}" /home/n8n
   chmod 750 "${ENV_DIR}"
 }
@@ -115,8 +132,9 @@ install_n8n_and_browser_packages() {
   log "Installing Playwright packages and n8n community node"
   npm_install_with_retry --prefix "${APP_DIR}/custom" playwright playwright-core n8n-nodes-playwright
   chown -R n8n:n8n "${APP_DIR}"
+  install_playwright_system_packages
   npx --prefix "${APP_DIR}/custom" playwright install-deps chromium
-  sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${APP_DIR}/ms-playwright" bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium"
+  sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${BROWSERS_DIR}" bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium"
 }
 
 configure_postgres() {
@@ -134,6 +152,11 @@ configure_postgres() {
 
 write_env_file() {
   if [[ -f "${ENV_FILE}" ]]; then
+    if grep -q '^PLAYWRIGHT_BROWSERS_PATH=/opt/n8n/ms-playwright$' "${ENV_FILE}"; then
+      log "Updating existing PLAYWRIGHT_BROWSERS_PATH for n8n-nodes-playwright compatibility"
+      sed -i 's#^PLAYWRIGHT_BROWSERS_PATH=/opt/n8n/ms-playwright$#PLAYWRIGHT_BROWSERS_PATH=/home/n8n/.cache/ms-playwright#' "${ENV_FILE}"
+    fi
+
     echo "Keeping existing ${ENV_FILE}"
     return
   fi
