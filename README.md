@@ -40,6 +40,7 @@ Secrets you need before production:
 - `sudo`
 - Node.js 22 LTS from NodeSource
 - n8n npm package, pinned by `N8N_VERSION`
+- npm retry and timeout settings for unstable network installs
 - `playwright`
 - `playwright-core`
 - `n8n-nodes-playwright`
@@ -84,6 +85,26 @@ sudo bash scripts/install.sh
 The installer creates `/etc/n8n/n8n.env` from `.env.example`, generates a new `N8N_ENCRYPTION_KEY`, generates a Postgres password, installs n8n, installs Playwright dependencies, and enables the systemd service.
 
 Do not start production until the env file is edited.
+
+## If npm Install Was Interrupted
+
+If the first install died with `ECONNRESET` and npm now fails with `Cannot find module 'promise-retry'`, repair NodeSource npm first:
+
+```bash
+sudo apt-get update
+sudo apt-get install --reinstall -y nodejs
+hash -r
+npm --version
+```
+
+Then pull the latest installer and rerun:
+
+```bash
+git pull
+sudo bash scripts/install.sh
+```
+
+Do not run `npm install -g npm@latest` as the recovery step. Use the NodeSource `nodejs` package reinstall so npm's bundled files are restored together.
 
 ## Configure Environment
 
@@ -321,6 +342,26 @@ n8n service failed:
 ```bash
 systemctl status n8n
 journalctl -u n8n -n 200 --no-pager
+```
+
+npm network abort during install:
+
+```bash
+sudo apt-get install --reinstall -y nodejs
+npm config set fetch-retries 5
+npm config set fetch-retry-mintimeout 20000
+npm config set fetch-retry-maxtimeout 120000
+npm config set fetch-timeout 300000
+sudo bash scripts/install.sh
+```
+
+npm corrupted after interrupted install:
+
+```bash
+sudo apt-get install --reinstall -y nodejs
+hash -r
+npm --version
+sudo bash scripts/install.sh
 ```
 
 ## Security Checklist
