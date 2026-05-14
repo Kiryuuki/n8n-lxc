@@ -16,8 +16,8 @@ Target host:
 External services:
 
 - Supabase project for execution logs
-- Browserless service at `ws://192.168.100.60:3111`
-- Cloudflare tunnel or reverse proxy for `https://dok-neyn.kiryuuki.space`
+- Browserless WebSocket endpoint, for example `ws://browserless.example.internal:3000`
+- Public n8n URL from Cloudflare Tunnel, Caddy, Nginx, or another reverse proxy
 
 Secrets you need before production:
 
@@ -76,7 +76,7 @@ Run on the Ubuntu 22.04 LXC:
 ```bash
 sudo apt-get update
 sudo apt-get install -y git
-git clone https://github.com/Kiryuuki/n8n-lxc.git
+git clone https://github.com/your-org/n8n-lxc.git
 cd n8n-lxc
 sudo bash scripts/install.sh
 ```
@@ -96,12 +96,12 @@ sudo nano /etc/n8n/n8n.env
 Required production values:
 
 ```env
-WEBHOOK_URL=https://dok-neyn.kiryuuki.space
-N8N_HOST=dok-neyn.kiryuuki.space
-N8N_EDITOR_BASE_URL=https://dok-neyn.kiryuuki.space
+WEBHOOK_URL=https://n8n.example.com
+N8N_HOST=n8n.example.com
+N8N_EDITOR_BASE_URL=https://n8n.example.com
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=replace_with_rotated_supabase_key
-BROWSERLESS_WS_URL=ws://192.168.100.60:3111?token=replace_with_token&timeout=55000
+BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
 ```
 
 If migrating from Windows n8n, replace the generated `N8N_ENCRYPTION_KEY` with the exact old key before importing credentials.
@@ -202,7 +202,7 @@ const browser = await $playwright.chromium.connectOverCDP(
 Equivalent concrete URL shape:
 
 ```text
-ws://192.168.100.60:3111?token=replace_with_token&timeout=55000
+ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
 ```
 
 ## Backup
