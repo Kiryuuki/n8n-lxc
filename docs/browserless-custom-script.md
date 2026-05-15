@@ -8,7 +8,34 @@ Root cause: the Playwright node validates a local browser binary first. Browserl
 /opt/n8n/custom/node_modules/n8n-nodes-playwright/dist/nodes/browsers/chromium-1223/chrome-linux/chrome
 ```
 
-## Option A: n8n Code Node
+## Recommended: Execute Command Node
+
+Use this path for n8n `2.x`. Playwright can fail inside the Code node sandbox with:
+
+```text
+Cannot assign to read only property 'stackTraceLimit'
+```
+
+Deploy the script somewhere the `n8n` service user can read:
+
+```bash
+cd ~/n8n-lxc
+git pull
+mkdir -p /opt/n8n/scripts
+cp scripts/browserless-smoke.js /opt/n8n/scripts/browserless-scrape.js
+chown -R n8n:n8n /opt/n8n/scripts
+chmod 755 /opt/n8n/scripts/browserless-scrape.js
+```
+
+Execute Command node:
+
+```bash
+node /opt/n8n/scripts/browserless-scrape.js "{{$json.url || 'https://example.com'}}"
+```
+
+Then parse stdout JSON in the next node.
+
+## Alternative: n8n Code Node
 
 Prereqs in `/etc/n8n/n8n.env`:
 
@@ -23,6 +50,8 @@ BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_tok
 Restart n8n after adding `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`.
 
 Current local Browserless instance: `ws://192.168.100.60:3111`. Keep the token only in `/etc/n8n/n8n.env`, not in tracked docs.
+
+Warning: this can still fail in n8n `2.x` because the Code node VM freezes native globals that Playwright expects to patch.
 
 Code node mode: `Run Once for All Items`
 
@@ -70,7 +99,7 @@ for (const url of targets) {
 return results;
 ```
 
-## Option B: Execute Command Node
+## Standalone Smoke Test
 
 Run from the LXC:
 
