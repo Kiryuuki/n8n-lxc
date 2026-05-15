@@ -211,7 +211,7 @@ Final production check:
 
 1. Run one manual n8n workflow.
 2. Confirm `journalctl -u n8n -n 100 --no-pager` shows hook success.
-3. Confirm Supabase has a startup row with `workflow_name = '__hook_healthcheck'`.
+3. Confirm Supabase has a startup row with `workflow_name = '__hook_healthcheck'` and `status = 'success'`.
 4. Confirm Supabase has a workflow execution row in `n8n_execution_logs`.
 
 Supabase SQL check:

@@ -54,7 +54,7 @@ function buildReadyPingData() {
     execution_id: `hook-ready-${Date.now()}`,
     workflow_id: "system",
     workflow_name: "__hook_healthcheck",
-    status: "hook_ready",
+    status: "success",
     started_at: now,
     finished_at: now,
     duration_ms: 0,
@@ -77,10 +77,11 @@ async function sendToSupabase(logData) {
   if (!response.ok) {
     const body = await response.text();
     console.log(`[HOOK] SUPABASE ERROR ${response.status}: ${body}`);
-    return;
+    return false;
   }
 
   console.log(`[HOOK] SUCCESS: logged execution ${logData.execution_id}`);
+  return true;
 }
 
 async function pingSupabase() {
@@ -90,8 +91,8 @@ async function pingSupabase() {
   }
 
   try {
-    await sendToSupabase(buildReadyPingData());
-    console.log("[HOOK] Supabase ping: OK");
+    const ok = await sendToSupabase(buildReadyPingData());
+    console.log("[HOOK] Supabase ping:", ok ? "OK" : "FAILED");
   } catch (error) {
     console.log("[HOOK] Supabase ping failed:", error.message);
   }
