@@ -26,6 +26,33 @@ chown -R n8n:n8n "${APP_DIR}/custom"
 sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${NODE_BROWSERS_DIR}" \
   bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
 
+log "Creating compatibility links for n8n-nodes-playwright"
+for chromium_dir in "${NODE_BROWSERS_DIR}"/chromium-*; do
+  [[ -d "${chromium_dir}" ]] || continue
+  if [[ -x "${chromium_dir}/chrome-linux64/chrome" && ! -e "${chromium_dir}/chrome-linux/chrome" ]]; then
+    mkdir -p "${chromium_dir}/chrome-linux"
+    ln -s ../chrome-linux64/chrome "${chromium_dir}/chrome-linux/chrome"
+  fi
+done
+
+for firefox_dir in "${NODE_BROWSERS_DIR}"/firefox-*; do
+  [[ -d "${firefox_dir}" ]] || continue
+  if [[ -x "${firefox_dir}/firefox/firefox" && ! -e "${firefox_dir}/linux/firefox" ]]; then
+    mkdir -p "${firefox_dir}/linux"
+    ln -s ../firefox/firefox "${firefox_dir}/linux/firefox"
+  fi
+done
+
+for webkit_dir in "${NODE_BROWSERS_DIR}"/webkit-*; do
+  [[ -d "${webkit_dir}" ]] || continue
+  if [[ -x "${webkit_dir}/pw_run.sh" && ! -e "${webkit_dir}/webkit-1/minibrowser-gtk/pw_run.sh" ]]; then
+    mkdir -p "${webkit_dir}/webkit-1/minibrowser-gtk"
+    ln -s ../../pw_run.sh "${webkit_dir}/webkit-1/minibrowser-gtk/pw_run.sh"
+  fi
+done
+
+chown -R n8n:n8n "${NODE_BROWSERS_DIR}"
+
 log "Installed browser executables:"
 find "${NODE_BROWSERS_DIR}" -type f \( -name chrome -o -name firefox -o -name pw_run.sh \) -print
 

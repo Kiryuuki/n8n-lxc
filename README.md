@@ -344,6 +344,8 @@ sudo bash scripts/repair-playwright-node.sh
 
 The community node checks its package-local browser path under `/opt/n8n/custom/node_modules/n8n-nodes-playwright/dist/nodes/browsers`, not only the normal Playwright cache. The repair script installs Chromium, Firefox, and WebKit into that package-local path and restarts n8n.
 
+On newer Playwright builds, Chromium may install as `chrome-linux64/chrome` while the community node expects `chrome-linux/chrome`. The repair script creates compatibility symlinks for that folder-name mismatch.
+
 `n8n-nodes-playwright` expects the browser cache at `/home/n8n/.cache/ms-playwright` during startup. Do not point `PLAYWRIGHT_BROWSERS_PATH` at `/opt/n8n/ms-playwright` unless you also update the community node setup behavior.
 
 Playwright downloads are expected on first install and when Playwright browser revisions change. They should not happen on every n8n restart once Chromium, Firefox, and WebKit are already present.
