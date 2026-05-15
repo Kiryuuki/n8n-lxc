@@ -342,7 +342,7 @@ Playwright community node cannot find local browser:
 sudo bash scripts/repair-playwright-node.sh
 ```
 
-The community node checks its package-local browser path under `/opt/n8n/custom/node_modules/n8n-nodes-playwright/dist/nodes/browsers`, not only the normal Playwright cache. The repair script installs Chromium, Firefox, and WebKit into that package-local path and restarts n8n.
+The community node checks its package-local browser path under `/opt/n8n/custom/node_modules/n8n-nodes-playwright/dist/nodes/browsers`, not only the normal Playwright cache. The repair script validates that `/opt/n8n/custom` and `/home/n8n` are writable, disables the node's startup browser rebuild script when present, installs or reuses browser files, creates compatibility links, enables the service, and starts n8n.
 
 On newer Playwright builds, Chromium may install as `chrome-linux64/chrome` while the community node expects `chrome-linux/chrome`. The repair script creates compatibility symlinks for that folder-name mismatch.
 
