@@ -176,6 +176,7 @@ Expected hook line:
 
 ```text
 [HOOK] n8n IS READY AND HOOKS ARE ACTIVE
+[HOOK] Supabase ping: OK
 ```
 
 ## Verify Install
@@ -210,7 +211,17 @@ Final production check:
 
 1. Run one manual n8n workflow.
 2. Confirm `journalctl -u n8n -n 100 --no-pager` shows hook success.
-3. Confirm Supabase has a new row in `n8n_execution_logs`.
+3. Confirm Supabase has a startup row with `workflow_name = '__hook_healthcheck'`.
+4. Confirm Supabase has a workflow execution row in `n8n_execution_logs`.
+
+Supabase SQL check:
+
+```sql
+select created_at, execution_id, workflow_name, status, mode
+from n8n_execution_logs
+order by created_at desc
+limit 10;
+```
 
 ## Browserless Usage in n8n Playwright Node
 

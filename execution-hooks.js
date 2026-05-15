@@ -47,6 +47,21 @@ function buildLogData(run, workflowData, executionId) {
   };
 }
 
+function buildReadyPingData() {
+  const now = new Date().toISOString();
+
+  return {
+    execution_id: `hook-ready-${Date.now()}`,
+    workflow_id: "system",
+    workflow_name: "__hook_healthcheck",
+    status: "hook_ready",
+    started_at: now,
+    finished_at: now,
+    duration_ms: 0,
+    mode: "startup",
+  };
+}
+
 async function sendToSupabase(logData) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${LOG_TABLE}`, {
     method: "POST",
@@ -68,6 +83,20 @@ async function sendToSupabase(logData) {
   console.log(`[HOOK] SUCCESS: logged execution ${logData.execution_id}`);
 }
 
+async function pingSupabase() {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.log("[HOOK] Supabase ping skipped - missing env vars");
+    return;
+  }
+
+  try {
+    await sendToSupabase(buildReadyPingData());
+    console.log("[HOOK] Supabase ping: OK");
+  } catch (error) {
+    console.log("[HOOK] Supabase ping failed:", error.message);
+  }
+}
+
 module.exports = {
   n8n: {
     ready: [
@@ -75,6 +104,7 @@ module.exports = {
         console.log("[HOOK] n8n IS READY AND HOOKS ARE ACTIVE");
         console.log("[HOOK] Supabase URL:", SUPABASE_URL ? "OK" : "MISSING");
         console.log("[HOOK] Supabase key:", SUPABASE_SERVICE_KEY ? "OK" : "MISSING");
+        await pingSupabase();
       },
     ],
   },
