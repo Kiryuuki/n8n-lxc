@@ -19,12 +19,16 @@ if [[ ! -d "${NODE_PACKAGE_DIR}" ]]; then
   exit 1
 fi
 
-log "Installing Playwright browsers into ${NODE_BROWSERS_DIR}"
+log "Preparing Playwright browsers in ${NODE_BROWSERS_DIR}"
 mkdir -p "${NODE_BROWSERS_DIR}"
 chown -R n8n:n8n "${APP_DIR}/custom"
 
-sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${NODE_BROWSERS_DIR}" \
-  bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
+if find "${NODE_BROWSERS_DIR}" -maxdepth 3 -type f \( -name chrome -o -name firefox -o -name pw_run.sh \) | grep -q .; then
+  log "Existing browser files found; skipping browser download"
+else
+  sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${NODE_BROWSERS_DIR}" \
+    bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
+fi
 
 log "Creating compatibility links for n8n-nodes-playwright"
 for chromium_dir in "${NODE_BROWSERS_DIR}"/chromium-*; do
