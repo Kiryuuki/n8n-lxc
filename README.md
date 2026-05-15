@@ -227,6 +227,8 @@ Equivalent concrete URL shape:
 ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
 ```
 
+If the community Playwright node fails before the custom script runs with a missing local browser path, use the Code node or Execute Command fallback in [docs/browserless-custom-script.md](docs/browserless-custom-script.md). Browserless itself does not need local Chromium; the failure is the community node's local browser validation.
+
 ## Backup
 
 ```bash
