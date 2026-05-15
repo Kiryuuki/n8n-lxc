@@ -2,6 +2,23 @@
 
 Ubuntu 22.04 direct install for n8n with systemd, local PostgreSQL, Supabase execution logging, local Playwright/Chromium, and Browserless support. No Docker.
 
+## What This Project Is For
+
+This repository builds a production-ready n8n server inside a dedicated Ubuntu LXC. It is for running client-grade automations that need reliable uptime, browser automation, execution logs, local backups, and a clean migration path from a Windows-hosted n8n setup.
+
+## What It Solves
+
+- Moves n8n out of a desktop-dependent Windows setup and into a persistent Linux service.
+- Gives n8n a dedicated PostgreSQL database instead of relying on fragile local app state.
+- Adds Supabase execution logging so workflow runs can be audited outside the n8n UI.
+- Supports both local Playwright browser execution and Browserless CDP for remote headless scraping.
+- Provides repair and verification scripts for the common failure points: npm interruption, Playwright browser paths, Browserless connectivity, hooks, and service startup.
+- Keeps secrets in `/etc/n8n/n8n.env` and out of git.
+
+## Why We Built It
+
+The goal is confidence: automations should survive restarts, expose failures, and leave evidence that they ran. This LXC setup turns n8n from a local workflow builder into a maintainable automation runtime that can support real client work, portfolio demos, scraping jobs, AI workflows, and long-running scheduled systems.
+
 ## Requirements
 
 Target host:
@@ -62,10 +79,13 @@ Secrets you need before production:
 |-- execution-hooks.js
 |-- supabase_migration.sql
 |-- docs/
+|   |-- browserless-custom-script.md
 |   `-- windows-to-lxc.md
 |-- scripts/
 |   |-- backup.sh
 |   |-- install.sh
+|   |-- browserless-smoke.js
+|   |-- repair-playwright-node.sh
 |   `-- verify.sh
 `-- systemd/
     `-- n8n.service
