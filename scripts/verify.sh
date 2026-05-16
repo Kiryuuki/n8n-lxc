@@ -93,6 +93,11 @@ check_browserless() {
     return
   fi
 
+  if [[ "${browserless_url}" != *"?token="* || "${browserless_url}" != *"&timeout="* ]]; then
+    echo "[FAIL] Browserless URL is malformed. Expected ?token=...&timeout=..."
+    return 1
+  fi
+
   sudo -H -u n8n env BROWSERLESS_WS_URL="${browserless_url}" bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
 const { chromium } = require('/opt/n8n/custom/node_modules/playwright-core');
 
