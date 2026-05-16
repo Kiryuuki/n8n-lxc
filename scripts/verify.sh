@@ -37,6 +37,18 @@ load_env() {
   fi
 }
 
+load_env_value() {
+  local key="$1"
+  local value=""
+
+  value="$(grep -E "^${key}=" "${ENV_FILE}" | tail -n 1 | cut -d= -f2- || true)"
+  value="${value#\'}"
+  value="${value%\'}"
+  value="${value#\"}"
+  value="${value%\"}"
+  printf '%s' "${value}"
+}
+
 check_http() {
   if curl -fsS http://127.0.0.1:5678/healthz >/dev/null 2>&1; then
     echo "[OK] n8n healthz"
@@ -70,12 +82,18 @@ NODE
 }
 
 check_browserless() {
-  if [[ -z "${BROWSERLESS_WS_URL:-}" || "${BROWSERLESS_WS_URL}" == *replace_with* ]]; then
+  local browserless_url="${BROWSERLESS_WS_URL:-}"
+
+  if [[ -z "${browserless_url}" ]]; then
+    browserless_url="$(load_env_value "BROWSERLESS_WS_URL")"
+  fi
+
+  if [[ -z "${browserless_url}" || "${browserless_url}" == *replace_with* ]]; then
     echo "[SKIP] Browserless URL not configured"
     return
   fi
 
-  sudo -H -u n8n env BROWSERLESS_WS_URL="${BROWSERLESS_WS_URL}" bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
+  sudo -H -u n8n env BROWSERLESS_WS_URL="${browserless_url}" bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
 const { chromium } = require('/opt/n8n/custom/node_modules/playwright-core');
 
 (async () => {
