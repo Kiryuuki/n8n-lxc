@@ -31,7 +31,7 @@ Local Playwright is installed for workflows that need `chromium.launch()`.
 Browserless remains available for remote CDP workflows:
 
 ```bash
-BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
+BROWSERLESS_WS_URL='ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000'
 ```
 
 ## MCP + Browser Client CORS

@@ -44,7 +44,7 @@ NODE_FUNCTION_ALLOW_EXTERNAL=playwright,playwright-core
 NODE_FUNCTION_ALLOW_BUILTIN=*
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 NODE_PATH=/opt/n8n/custom/node_modules
-BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
+BROWSERLESS_WS_URL='ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000'
 N8N_CORS_ALLOWED_ORIGINS=https://n8n.example.com,https://claude.ai,https://claude.com
 N8N_CORS_ALLOW_CREDENTIALS=true
 N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true

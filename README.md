@@ -147,7 +147,7 @@ N8N_CORS_ALLOW_CREDENTIALS=true
 N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=replace_with_rotated_supabase_key
-BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
+BROWSERLESS_WS_URL='ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000'
 ```
 
 If migrating from Windows n8n, replace the generated `N8N_ENCRYPTION_KEY` with the exact old key before importing credentials.
