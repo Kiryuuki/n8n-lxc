@@ -2,6 +2,20 @@
 
 Ubuntu 22.04 direct install for n8n with systemd, local PostgreSQL, Supabase execution logging, local Playwright/Chromium, and Browserless support. No Docker.
 
+## Features
+
+- Bare-metal n8n install for Ubuntu LXC, pinned to a known `N8N_VERSION`.
+- systemd service with restart policy, env-file loading, and baseline hardening.
+- Local PostgreSQL setup with generated credentials and persistent n8n data.
+- Supabase execution hooks for external workflow run logging and startup health pings.
+- Local Playwright browser support with Chromium, Firefox, WebKit, and compatibility repair tooling.
+- Browserless CDP support for remote headless scraping without hardcoded workflow tokens.
+- Secret-safe runtime config through `/etc/n8n/n8n.env` and tracked `.env.example` placeholders.
+- Backup script with workflow export, decrypted credential export, Postgres dump, error trap, and retention.
+- Verification script for Node, npm, n8n, Postgres, service health, Playwright, Browserless, and hooks.
+- Recovery helpers for npm install failures, corrupted Playwright paths, read-only LXC storage, and stale global n8n installs.
+- Journald log size limits and GitHub Actions shellcheck for basic script quality.
+
 ## What This Project Is For
 
 This repository builds a production-ready n8n server inside a dedicated Ubuntu LXC. It is for running client-grade automations that need reliable uptime, browser automation, execution logs, local backups, and a clean migration path from a Windows-hosted n8n setup.
