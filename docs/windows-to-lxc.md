@@ -34,10 +34,21 @@ Browserless remains available for remote CDP workflows:
 BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
 ```
 
+## MCP + Browser Client CORS
+
+For Claude Desktop or other browser-like MCP clients, keep CORS origins explicit:
+
+```bash
+N8N_CORS_ALLOWED_ORIGINS=https://n8n.example.com,https://claude.ai,https://claude.com
+N8N_CORS_ALLOW_CREDENTIALS=true
+N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+```
+
 ## Execute Command Node
 
-`N8N_ENABLE_EXECUTE_COMMAND=true` is kept for parity with Windows. This is risky.
-Keep this instance private, admin-only, and behind trusted network controls.
+`N8N_ENABLE_EXECUTE_COMMAND=false` is the safe default. Set it to `true` only
+when Execute Command workflows are required, and keep that instance private,
+admin-only, and behind trusted network controls.
 
 ## Obsidian MCP
 

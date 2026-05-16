@@ -45,11 +45,14 @@ NODE_FUNCTION_ALLOW_BUILTIN=*
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 NODE_PATH=/opt/n8n/custom/node_modules
 BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
+N8N_CORS_ALLOWED_ORIGINS=https://n8n.example.com,https://claude.ai,https://claude.com
+N8N_CORS_ALLOW_CREDENTIALS=true
+N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
 ```
 
 Restart n8n after adding `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`.
 
-Current local Browserless instance: `ws://192.168.100.60:3111`. Keep the token only in `/etc/n8n/n8n.env`, not in tracked docs.
+Keep the live Browserless host and token only in `/etc/n8n/n8n.env`, not in tracked docs.
 
 Warning: this can still fail in n8n `2.x` because the Code node VM freezes native globals that Playwright expects to patch.
 

@@ -98,7 +98,7 @@ Run on the Ubuntu 22.04 LXC:
 ```bash
 sudo apt-get update
 sudo apt-get install -y git
-git clone https://github.com/your-org/n8n-lxc.git
+git clone https://github.com/Kiryuuki/n8n-lxc.git
 cd n8n-lxc
 sudo bash scripts/install.sh
 ```
@@ -138,9 +138,13 @@ sudo nano /etc/n8n/n8n.env
 Required production values:
 
 ```env
+N8N_VERSION=2.20.9
 WEBHOOK_URL=https://n8n.example.com
 N8N_HOST=n8n.example.com
 N8N_EDITOR_BASE_URL=https://n8n.example.com
+N8N_CORS_ALLOWED_ORIGINS=https://n8n.example.com,https://claude.ai,https://claude.com
+N8N_CORS_ALLOW_CREDENTIALS=true
+N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=replace_with_rotated_supabase_key
 BROWSERLESS_WS_URL=ws://browserless.example.internal:3000?token=replace_with_token&timeout=55000
@@ -157,10 +161,11 @@ NODE_PATH=/opt/n8n/custom/node_modules
 NODE_FUNCTION_ALLOW_EXTERNAL=playwright,playwright-core
 NODE_FUNCTION_ALLOW_BUILTIN=*
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
-N8N_ENABLE_EXECUTE_COMMAND=true
+# High-risk: enables shell command execution from workflows. Enable only on private/admin-only instances.
+N8N_ENABLE_EXECUTE_COMMAND=false
 ```
 
-`N8N_ENABLE_EXECUTE_COMMAND=true` is high-risk. Keep this instance private, admin-only, and behind trusted network controls.
+Set `N8N_ENABLE_EXECUTE_COMMAND=true` only if you need Execute Command workflows. Keep that mode private, admin-only, and behind trusted network controls.
 
 ## Supabase Setup
 
@@ -273,6 +278,8 @@ Backups are written to:
 /opt/n8n/backups/<timestamp>/
 ```
 
+Backups older than 7 days are removed by default. Override with `BACKUP_RETENTION_DAYS=<days>`.
+
 Files:
 
 - `workflows.json`
@@ -306,7 +313,7 @@ Test before production upgrade:
 
 ```bash
 sudo bash scripts/backup.sh
-sudo N8N_VERSION=2.19.4 bash scripts/install.sh
+sudo N8N_VERSION=2.20.9 bash scripts/install.sh
 sudo systemctl restart n8n
 sudo bash scripts/verify.sh
 ```
