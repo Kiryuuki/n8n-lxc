@@ -50,15 +50,21 @@ load_env_value() {
 }
 
 check_http() {
-  if curl -fsS http://127.0.0.1:5678/healthz >/dev/null 2>&1; then
-    echo "[OK] n8n healthz"
-    return
-  fi
+  local attempt
 
-  if curl -fsS http://127.0.0.1:5678 >/dev/null 2>&1; then
-    echo "[OK] n8n port 5678"
-    return
-  fi
+  for attempt in {1..30}; do
+    if curl -fsS http://127.0.0.1:5678/healthz >/dev/null 2>&1; then
+      echo "[OK] n8n healthz"
+      return
+    fi
+
+    if curl -fsS http://127.0.0.1:5678 >/dev/null 2>&1; then
+      echo "[OK] n8n port 5678"
+      return
+    fi
+
+    sleep 2
+  done
 
   echo "[FAIL] n8n HTTP check"
   return 1
