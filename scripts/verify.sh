@@ -60,6 +60,30 @@ load_env_value() {
   printf '%s' "${value}"
 }
 
+run_as_n8n() {
+  if command -v runuser >/dev/null 2>&1; then
+    runuser -u n8n -- "$@"
+  else
+    sudo -n -u n8n "$@"
+  fi
+}
+
+browserless_timeout_ms() {
+  local url="$1"
+  local timeout="55000"
+
+  if [[ "${url}" =~ (^|[?&])timeout=([0-9]+) ]]; then
+    timeout="${BASH_REMATCH[2]}"
+  fi
+
+  printf '%s' "${timeout}"
+}
+
+sanitize_browserless_url() {
+  local url="$1"
+  printf '%s' "${url}" | sed -E 's#token=[^&]+#token=***#'
+}
+
 check_http() {
   local attempt
 
@@ -82,7 +106,7 @@ check_http() {
 }
 
 check_playwright() {
-  sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-${BROWSERS_DIR}}" \
+  run_as_n8n env PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-${BROWSERS_DIR}}" \
     bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
 const { chromium } = require('/opt/n8n/custom/node_modules/playwright');
 
@@ -100,6 +124,7 @@ NODE
 
 check_browserless() {
   local browserless_url="${BROWSERLESS_WS_URL:-}"
+  local timeout_ms
 
   if [[ -z "${browserless_url}" ]]; then
     browserless_url="$(load_env_value "BROWSERLESS_WS_URL")"
@@ -115,11 +140,16 @@ check_browserless() {
     return 1
   fi
 
-  sudo -H -u n8n env BROWSERLESS_WS_URL="${browserless_url}" bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
+  timeout_ms="$(browserless_timeout_ms "${browserless_url}")"
+  echo "[INFO] Browserless target: $(sanitize_browserless_url "${browserless_url}")"
+
+  run_as_n8n env BROWSERLESS_WS_URL="${browserless_url}" BROWSERLESS_CONNECT_TIMEOUT="${timeout_ms}" \
+    bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
 const { chromium } = require('/opt/n8n/custom/node_modules/playwright-core');
 
 (async () => {
-  const browser = await chromium.connectOverCDP(process.env.BROWSERLESS_WS_URL);
+  const timeout = Number(process.env.BROWSERLESS_CONNECT_TIMEOUT || 55000);
+  const browser = await chromium.connectOverCDP(process.env.BROWSERLESS_WS_URL, { timeout });
   await browser.close();
 })();
 NODE

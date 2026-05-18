@@ -36,8 +36,13 @@ async function scrape(url) {
     throw new Error("BROWSERLESS_WS_URL is missing. Set it in /etc/n8n/n8n.env.");
   }
 
+  const parsedUrl = new URL(browserlessUrl);
+  const timeout = Number(parsedUrl.searchParams.get("timeout") || 55000);
+  const safeUrl = browserlessUrl.replace(/token=[^&]+/, "token=***");
+  console.log(JSON.stringify({ ok: true, browserlessTarget: safeUrl, timeout }, null, 2));
+
   const { chromium } = loadPlaywrightCore();
-  const browser = await chromium.connectOverCDP(browserlessUrl, { timeout: 30000 });
+  const browser = await chromium.connectOverCDP(browserlessUrl, { timeout });
 
   try {
     const context = browser.contexts()[0] || await browser.newContext({

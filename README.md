@@ -70,6 +70,7 @@ Secrets you need before production:
 - `postgresql-contrib`
 - `openssl`
 - `sudo`
+- `netcat-openbsd`
 - Node.js 22 LTS from NodeSource
 - n8n npm package, pinned by `N8N_VERSION`
 - npm retry and timeout settings for unstable network installs
@@ -413,6 +414,15 @@ Browserless failed:
 grep BROWSERLESS_WS_URL /etc/n8n/n8n.env
 sudo bash scripts/verify.sh
 ```
+
+If Browserless times out, check the Browserless host from the LXC:
+
+```bash
+nc -vz browserless.example.internal 3000
+curl -I http://browserless.example.internal:3000
+```
+
+Replace host and port with your real Browserless address. A timeout means the Browserless service is down, the port is wrong, or the LXC cannot route to that host.
 
 n8n service failed:
 

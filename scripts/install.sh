@@ -71,7 +71,7 @@ install_base_packages() {
     apt-get update
   fi
 
-  apt-get install -y curl ca-certificates gnupg build-essential postgresql postgresql-contrib openssl sudo git
+  apt-get install -y curl ca-certificates gnupg build-essential postgresql postgresql-contrib openssl sudo git netcat-openbsd
 }
 
 install_playwright_system_packages() {
