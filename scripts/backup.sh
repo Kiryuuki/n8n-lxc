@@ -10,12 +10,23 @@ ENV_FILE="/etc/n8n/n8n.env"
 trap 'echo "BACKUP FAILED at line ${LINENO}" >&2' ERR
 
 load_env() {
-  if [[ -f "${ENV_FILE}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${ENV_FILE}"
-    set +a
-  fi
+  [[ -f "${ENV_FILE}" ]] || return
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "${line}" || "${line}" == \#* || "${line}" != *=* ]] && continue
+
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+
+    value="${value#\'}"
+    value="${value%\'}"
+    value="${value#\"}"
+    value="${value%\"}"
+    printf -v "${key}" '%s' "${value}"
+    export "${key}"
+  done < "${ENV_FILE}"
 }
 
 make_backup_dir() {
@@ -37,8 +48,18 @@ export_n8n_data() {
     exit 1
   fi
 
-  sudo -H -u n8n bash -lc "set -a; source '${ENV_FILE}'; set +a; n8n export:workflow --all --output='${TARGET_DIR}/workflows.json'"
-  sudo -H -u n8n bash -lc "set -a; source '${ENV_FILE}'; set +a; n8n export:credentials --all --decrypted --output='${TARGET_DIR}/credentials.decrypted.json'"
+  local n8n_env=(
+    "N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-}"
+    "DB_TYPE=${DB_TYPE:-postgresdb}"
+    "DB_POSTGRESDB_HOST=${DB_POSTGRESDB_HOST:-127.0.0.1}"
+    "DB_POSTGRESDB_PORT=${DB_POSTGRESDB_PORT:-5432}"
+    "DB_POSTGRESDB_DATABASE=${DB_POSTGRESDB_DATABASE:-n8n}"
+    "DB_POSTGRESDB_USER=${DB_POSTGRESDB_USER:-n8n}"
+    "DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD:-}"
+  )
+
+  sudo -H -u n8n env "${n8n_env[@]}" n8n export:workflow --all --output="${TARGET_DIR}/workflows.json"
+  sudo -H -u n8n env "${n8n_env[@]}" n8n export:credentials --all --decrypted --output="${TARGET_DIR}/credentials.decrypted.json"
   chmod 600 "${TARGET_DIR}/credentials.decrypted.json"
 }
 

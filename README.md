@@ -13,6 +13,7 @@ Ubuntu 22.04 direct install for n8n with systemd, local PostgreSQL, Supabase exe
 - Secret-safe runtime config through `/etc/n8n/n8n.env` and tracked `.env.example` placeholders.
 - Backup script with workflow export, decrypted credential export, Postgres dump, error trap, and retention.
 - Verification script for Node, npm, n8n, Postgres, service health, Playwright, Browserless, and hooks.
+- Login MOTD command banner for quick n8n operations inside the LXC shell.
 - Recovery helpers for npm install failures, corrupted Playwright paths, read-only LXC storage, and stale global n8n installs.
 - Journald log size limits and GitHub Actions shellcheck for basic script quality.
 
@@ -95,6 +96,8 @@ Secrets you need before production:
 |-- docs/
 |   |-- browserless-custom-script.md
 |   `-- windows-to-lxc.md
+|-- motd/
+|   `-- 99-n8n-lxc
 |-- scripts/
 |   |-- backup.sh
 |   |-- install.sh
@@ -120,6 +123,8 @@ sudo bash scripts/install.sh
 The installer creates `/etc/n8n/n8n.env` from `.env.example`, generates a new `N8N_ENCRYPTION_KEY`, generates a Postgres password, installs n8n, installs Playwright dependencies, and enables the systemd service.
 
 Do not start production until the env file is edited.
+
+The installer also adds `/etc/update-motd.d/99-n8n-lxc`, so opening the LXC shell shows the n8n URL and common commands for status, logs, restart, env editing, update, verify, and backup.
 
 ## If npm Install Was Interrupted
 

@@ -29,12 +29,23 @@ check_file() {
 }
 
 load_env() {
-  if [[ -f "${ENV_FILE}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${ENV_FILE}"
-    set +a
-  fi
+  [[ -f "${ENV_FILE}" ]] || return
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "${line}" || "${line}" == \#* || "${line}" != *=* ]] && continue
+
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+
+    value="${value#\'}"
+    value="${value%\'}"
+    value="${value#\"}"
+    value="${value%\"}"
+    printf -v "${key}" '%s' "${value}"
+    export "${key}"
+  done < "${ENV_FILE}"
 }
 
 load_env_value() {

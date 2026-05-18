@@ -13,6 +13,7 @@ ENV_DIR="/etc/n8n"
 ENV_FILE="${ENV_DIR}/n8n.env"
 SERVICE_FILE="/etc/systemd/system/n8n.service"
 JOURNALD_DROPIN="/etc/systemd/journald.conf.d/n8n-limits.conf"
+MOTD_FILE="/etc/update-motd.d/99-n8n-lxc"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GENERATED_DB_PASSWORD=""
 
@@ -28,12 +29,23 @@ require_root() {
 }
 
 load_existing_env() {
-  if [[ -f "${ENV_FILE}" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "${ENV_FILE}"
-    set +a
-  fi
+  [[ -f "${ENV_FILE}" ]] || return
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "${line}" || "${line}" == \#* || "${line}" != *=* ]] && continue
+
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+
+    value="${value#\'}"
+    value="${value%\'}"
+    value="${value#\"}"
+    value="${value%\"}"
+    printf -v "${key}" '%s' "${value}"
+    export "${key}"
+  done < "${ENV_FILE}"
 }
 
 assert_rootfs_writable() {
@@ -250,6 +262,16 @@ install_service() {
   systemctl enable n8n
 }
 
+install_motd() {
+  log "Installing n8n login command banner"
+  if [[ -d /etc/update-motd.d ]]; then
+    cp "${REPO_DIR}/motd/99-n8n-lxc" "${MOTD_FILE}"
+    chmod 755 "${MOTD_FILE}"
+  else
+    log "Skipping MOTD install because /etc/update-motd.d does not exist"
+  fi
+}
+
 main() {
   require_root
   load_existing_env
@@ -262,6 +284,7 @@ main() {
   write_env_file
   configure_journald
   install_service
+  install_motd
   echo "Install complete. Edit ${ENV_FILE}, then run: sudo systemctl restart n8n"
 }
 

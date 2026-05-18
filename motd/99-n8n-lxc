@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+ENV_FILE="/etc/n8n/n8n.env"
+REPO_DIR="/root/n8n-lxc"
+N8N_URL="not configured"
+
+read_env_value() {
+  local key="$1"
+  local value=""
+
+  [[ -f "${ENV_FILE}" ]] || return
+  value="$(grep -E "^${key}=" "${ENV_FILE}" | tail -n 1 | cut -d= -f2- || true)"
+  value="${value#\'}"
+  value="${value%\'}"
+  value="${value#\"}"
+  value="${value%\"}"
+  printf '%s' "${value}"
+}
+
+N8N_URL="$(read_env_value N8N_EDITOR_BASE_URL)"
+if [[ -z "${N8N_URL}" ]]; then
+  N8N_URL="$(read_env_value WEBHOOK_URL)"
+fi
+N8N_URL="${N8N_URL:-not configured}"
+
+PRIMARY_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+OS_PRETTY="$(. /etc/os-release 2>/dev/null && printf '%s' "${PRETTY_NAME}")"
+
+cat <<EOF
+
+n8n LXC Runtime
+Host: $(hostname) | OS: ${OS_PRETTY:-unknown} | IP: ${PRIMARY_IP:-unknown}
+URL:  ${N8N_URL}
+
+Useful commands:
+  systemctl status n8n --no-pager
+  journalctl -u n8n -f
+  systemctl restart n8n
+  nano /etc/n8n/n8n.env
+  cd ${REPO_DIR} && git pull && sudo bash scripts/install.sh
+  cd ${REPO_DIR} && sudo bash scripts/verify.sh
+  cd ${REPO_DIR} && sudo bash scripts/backup.sh
+
+EOF
