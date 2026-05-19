@@ -5,6 +5,7 @@ APP_DIR="/opt/n8n"
 NODE_PACKAGE_DIR="${APP_DIR}/custom/node_modules/n8n-nodes-playwright"
 NODE_BROWSERS_DIR="${NODE_PACKAGE_DIR}/dist/nodes/browsers"
 SETUP_SKIP_CONTENT="console.log('Browser setup skipped: managed by n8n-lxc repair script');"
+MODE="${1:-manual}"
 
 log() {
   echo "[repair-playwright-node] $*"
@@ -68,7 +69,7 @@ disable_startup_browser_setup() {
 
   while IFS= read -r file; do
     setup_files+=("${file}")
-  done < <(find "${NODE_PACKAGE_DIR}" -path "*/scripts/setup-browsers.*" -type f 2>/dev/null)
+  done < <(find "${NODE_PACKAGE_DIR}" -path "*/scripts/setup-browsers.*" -type f ! -name "*.bak" 2>/dev/null)
 
   if [[ "${#setup_files[@]}" -eq 0 ]]; then
     log "No setup-browsers script found; skipping startup setup patch"
@@ -82,13 +83,46 @@ disable_startup_browser_setup() {
     fi
 
     log "Patching startup browser setup: ${setup_file}"
-    cp -n "${setup_file}" "${setup_file}.bak"
+    cp --update=none "${setup_file}" "${setup_file}.bak"
     printf "%s\n" "${SETUP_SKIP_CONTENT}" > "${setup_file}"
   done
 }
 
-systemctl stop n8n || true
-systemctl reset-failed n8n || true
+prune_stale_browser_revisions() {
+  local family="$1"
+  local keep_dir=""
+  local candidate=""
+
+  while IFS= read -r candidate; do
+    keep_dir="${candidate}"
+  done < <(find "${NODE_BROWSERS_DIR}" -maxdepth 1 -mindepth 1 -type d -name "${family}-*" | sort -V)
+
+  [[ -n "${keep_dir}" ]] || return
+
+  while IFS= read -r candidate; do
+    [[ "${candidate}" == "${keep_dir}" ]] && continue
+    log "Removing stale ${family} revision: ${candidate}"
+    rm -rf "${candidate}"
+  done < <(find "${NODE_BROWSERS_DIR}" -maxdepth 1 -mindepth 1 -type d -name "${family}-*" | sort -V)
+}
+
+cleanup_tmp_profiles() {
+  local tmp_dir
+  for tmp_dir in /tmp/playwright_* /tmp/pw-*; do
+    [[ -e "${tmp_dir}" ]] || continue
+    rm -rf "${tmp_dir}" || true
+  done
+}
+
+if [[ "${MODE}" != "manual" && "${MODE}" != "--prestart" ]]; then
+  echo "Usage: sudo bash scripts/repair-playwright-node.sh [--prestart]" >&2
+  exit 1
+fi
+
+if [[ "${MODE}" == "manual" ]]; then
+  systemctl stop n8n || true
+  systemctl reset-failed n8n || true
+fi
 
 check_writable_dir "${APP_DIR}/custom"
 check_writable_dir "/home/n8n"
@@ -147,11 +181,21 @@ for webkit_dir in "${NODE_BROWSERS_DIR}"/webkit-*; do
   fi
 done
 
+log "Pruning stale browser revisions and temp profiles"
+prune_stale_browser_revisions "chromium"
+prune_stale_browser_revisions "firefox"
+prune_stale_browser_revisions "webkit"
+cleanup_tmp_profiles
+
 log "Installed browser executables:"
 find "${NODE_BROWSERS_DIR}" -type f \( -name chrome -o -name firefox -o -name pw_run.sh \) -print
 find "${NODE_BROWSERS_DIR}" -type l -print
 
-log "Enabling and starting n8n"
-systemctl enable n8n
-systemctl start n8n
-systemctl status n8n --no-pager
+if [[ "${MODE}" == "manual" ]]; then
+  log "Enabling and starting n8n"
+  systemctl enable n8n
+  systemctl start n8n
+  systemctl status n8n --no-pager
+else
+  log "Prestart mode complete"
+fi
