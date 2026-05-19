@@ -124,6 +124,7 @@ find_package_local_chromium() {
 
 check_package_local_chromium_binary() {
   local chromium_bin=""
+  local chromium_real_bin=""
   chromium_bin="$(find_package_local_chromium || true)"
 
   if [[ -z "${chromium_bin}" ]]; then
@@ -136,19 +137,30 @@ check_package_local_chromium_binary() {
     return 1
   fi
 
+  chromium_real_bin="$(readlink -f "${chromium_bin}" 2>/dev/null || true)"
+  if [[ -z "${chromium_real_bin}" || ! -f "${chromium_real_bin}" ]]; then
+    echo "[FAIL] Chromium symlink target is missing or unreadable: ${chromium_bin}"
+    return 1
+  fi
+
+  if ! [[ -x "${chromium_real_bin}" ]]; then
+    echo "[FAIL] Chromium target exists but is not executable: ${chromium_real_bin}"
+    return 1
+  fi
+
   if command -v file >/dev/null 2>&1; then
-    if ! file -b "${chromium_bin}" | grep -qi 'ELF'; then
-      echo "[FAIL] Chromium binary is not ELF (likely corrupted): ${chromium_bin}"
+    if ! file -Lb "${chromium_real_bin}" | grep -qi 'ELF'; then
+      echo "[FAIL] Chromium binary is not ELF (likely corrupted): ${chromium_real_bin}"
       return 1
     fi
   else
-    if ! head -c 4 "${chromium_bin}" 2>/dev/null | grep -q $'^\x7fELF$'; then
-      echo "[FAIL] Chromium binary header is invalid (likely corrupted): ${chromium_bin}"
+    if ! head -c 4 "${chromium_real_bin}" 2>/dev/null | grep -q $'^\x7fELF$'; then
+      echo "[FAIL] Chromium binary header is invalid (likely corrupted): ${chromium_real_bin}"
       return 1
     fi
   fi
 
-  echo "[OK] package-local Chromium binary: ${chromium_bin}"
+  echo "[OK] package-local Chromium binary: ${chromium_bin} -> ${chromium_real_bin}"
 }
 
 check_playwright() {
