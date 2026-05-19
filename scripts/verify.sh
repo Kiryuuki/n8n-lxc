@@ -105,6 +105,52 @@ check_http() {
   return 1
 }
 
+find_package_local_chromium() {
+  local base="/opt/n8n/custom/node_modules/n8n-nodes-playwright/dist/nodes/browsers"
+  local chromium_dir
+  for chromium_dir in "${base}"/chromium-*; do
+    [[ -d "${chromium_dir}" ]] || continue
+    if [[ -f "${chromium_dir}/chrome-linux/chrome" ]]; then
+      printf '%s\n' "${chromium_dir}/chrome-linux/chrome"
+      return 0
+    fi
+    if [[ -f "${chromium_dir}/chrome-linux64/chrome" ]]; then
+      printf '%s\n' "${chromium_dir}/chrome-linux64/chrome"
+      return 0
+    fi
+  done
+  return 1
+}
+
+check_package_local_chromium_binary() {
+  local chromium_bin=""
+  chromium_bin="$(find_package_local_chromium || true)"
+
+  if [[ -z "${chromium_bin}" ]]; then
+    echo "[FAIL] package-local Chromium binary missing under n8n-nodes-playwright browsers/"
+    return 1
+  fi
+
+  if ! [[ -x "${chromium_bin}" ]]; then
+    echo "[FAIL] Chromium exists but is not executable: ${chromium_bin}"
+    return 1
+  fi
+
+  if command -v file >/dev/null 2>&1; then
+    if ! file -b "${chromium_bin}" | grep -qi 'ELF'; then
+      echo "[FAIL] Chromium binary is not ELF (likely corrupted): ${chromium_bin}"
+      return 1
+    fi
+  else
+    if ! head -c 4 "${chromium_bin}" 2>/dev/null | grep -q $'^\x7fELF$'; then
+      echo "[FAIL] Chromium binary header is invalid (likely corrupted): ${chromium_bin}"
+      return 1
+    fi
+  fi
+
+  echo "[OK] package-local Chromium binary: ${chromium_bin}"
+}
+
 check_playwright() {
   run_as_n8n env PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-${BROWSERS_DIR}}" \
     bash -lc "cd '${APP_DIR}/custom' && node -" <<'NODE'
@@ -166,6 +212,7 @@ main() {
   check_file "${ENV_FILE}"
   check_file "${APP_DIR}/execution-hooks.js"
   check_http
+  check_package_local_chromium_binary
   check_playwright
   check_browserless
   journalctl -u n8n -n 100 --no-pager | grep -q "n8n IS READY AND HOOKS ARE ACTIVE" && echo "[OK] hook loaded"

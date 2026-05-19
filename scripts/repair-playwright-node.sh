@@ -10,6 +10,31 @@ log() {
   echo "[repair-playwright-node] $*"
 }
 
+find_chromium_binary() {
+  local chromium_dir
+  for chromium_dir in "${NODE_BROWSERS_DIR}"/chromium-*; do
+    [[ -d "${chromium_dir}" ]] || continue
+    if [[ -f "${chromium_dir}/chrome-linux/chrome" ]]; then
+      printf '%s\n' "${chromium_dir}/chrome-linux/chrome"
+      return 0
+    fi
+    if [[ -f "${chromium_dir}/chrome-linux64/chrome" ]]; then
+      printf '%s\n' "${chromium_dir}/chrome-linux64/chrome"
+      return 0
+    fi
+  done
+  return 1
+}
+
+is_elf_binary() {
+  local bin_path="$1"
+  if command -v file >/dev/null 2>&1; then
+    file -b "${bin_path}" | grep -qi 'ELF'
+    return
+  fi
+  head -c 4 "${bin_path}" 2>/dev/null | grep -q $'^\x7fELF$'
+}
+
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Run as root: sudo bash scripts/repair-playwright-node.sh" >&2
   exit 1
@@ -73,9 +98,20 @@ log "Preparing Playwright browsers in ${NODE_BROWSERS_DIR}"
 mkdir -p "${NODE_BROWSERS_DIR}"
 chown n8n:n8n "${NODE_BROWSERS_DIR}"
 
+need_browser_install="true"
+
 if find "${NODE_BROWSERS_DIR}" -maxdepth 3 -type f \( -name chrome -o -name firefox -o -name pw_run.sh \) | grep -q .; then
-  log "Existing browser files found; skipping browser download"
-else
+  chromium_binary="$(find_chromium_binary || true)"
+  if [[ -n "${chromium_binary}" && -x "${chromium_binary}" ]] && is_elf_binary "${chromium_binary}"; then
+    need_browser_install="false"
+    log "Existing Chromium binary looks valid: ${chromium_binary}"
+  else
+    log "Existing browser tree is invalid or corrupted; forcing browser reinstall"
+    rm -rf "${NODE_BROWSERS_DIR}/chromium-"* "${NODE_BROWSERS_DIR}/firefox-"* "${NODE_BROWSERS_DIR}/webkit-"*
+  fi
+fi
+
+if [[ "${need_browser_install}" == "true" ]]; then
   sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${NODE_BROWSERS_DIR}" \
     bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
 fi
