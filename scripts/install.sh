@@ -183,9 +183,17 @@ install_n8n_and_browser_packages() {
   log "Installing Playwright packages and n8n community node"
   npm_install_with_retry --prefix "${APP_DIR}/custom" playwright playwright-core n8n-nodes-playwright
   chown -R n8n:n8n "${APP_DIR}"
-  install_playwright_system_packages
-  npx --prefix "${APP_DIR}/custom" playwright install-deps
-  sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${BROWSERS_DIR}" bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
+
+  log "Checking if Playwright browsers are already installed and operational"
+  if [[ -f "${BROWSERS_DIR}/.install-complete" ]] || (command -v node >/dev/null 2>&1 && sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${BROWSERS_DIR}" node -e "const { chromium } = require('${APP_DIR}/custom/node_modules/playwright'); (async () => { const browser = await chromium.launch({ headless: true }); await browser.close(); })()" >/dev/null 2>&1); then
+    log "Playwright and browsers are already fully operational; skipping browser download."
+    touch "${BROWSERS_DIR}/.install-complete"
+  else
+    log "Installing Playwright system dependencies and browser binaries"
+    npx --prefix "${APP_DIR}/custom" playwright install-deps
+    sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${BROWSERS_DIR}" bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
+    touch "${BROWSERS_DIR}/.install-complete"
+  fi
 }
 
 configure_postgres() {
@@ -277,6 +285,7 @@ main() {
   load_existing_env
   assert_rootfs_writable
   install_base_packages
+  install_playwright_system_packages
   install_nodejs
   create_user_and_dirs
   install_n8n_and_browser_packages

@@ -2,6 +2,61 @@
 
 Ubuntu 22.04 direct install for n8n with systemd, local PostgreSQL, Supabase execution logging, local Playwright/Chromium, and Browserless support. No Docker.
 
+## 🚀 Quick Start & Installation
+
+Get your bare-metal n8n runtime up and running on an Ubuntu 22.04 LXC in a few simple steps.
+
+> [!IMPORTANT]
+> Ensure your target LXC has **systemd** enabled, at least **2 CPU cores**, **2 GB RAM**, and outbound internet access before starting.
+
+### 1. One-Line Installation
+
+Execute the following command to update packages, install git, clone this repository, and run the automated installation script:
+
+```bash
+sudo apt-get update && sudo apt-get install -y git && git clone https://github.com/Kiryuuki/n8n-lxc.git && cd n8n-lxc && sudo bash scripts/install.sh
+```
+
+This automated script will:
+- Install system dependencies, Node.js 22 LTS, and PostgreSQL.
+- Pin and install `n8n` globally.
+- Install Playwright (Chromium, Firefox, WebKit) and the community Playwright node.
+- Configure local PostgreSQL with generated secure credentials.
+- Create `/etc/n8n/n8n.env` with custom secrets (such as the encryption key).
+- Enable and configure the systemd service with automated hardening.
+- Set up a customized login MOTD banner with helpful commands.
+
+### 2. Configure the Environment
+
+You **must** configure your environment settings before starting production. Create the directory and open the configuration file:
+
+```bash
+sudo mkdir -p /etc/n8n && sudo nano /etc/n8n/n8n.env
+```
+
+At a minimum, configure the following variables:
+- `WEBHOOK_URL` (e.g. `https://n8n.example.com`)
+- `N8N_HOST` & `N8N_EDITOR_BASE_URL`
+- `SUPABASE_URL` & `SUPABASE_SERVICE_KEY` (if utilizing Supabase execution logging)
+- `BROWSERLESS_WS_URL` (if using external Browserless support)
+
+> [!TIP]
+> If migrating from an existing Windows n8n setup, copy your original `N8N_ENCRYPTION_KEY` into this file so your imported credentials decrypt correctly. See the [Windows Migration Guide](docs/windows-to-lxc.md) for details.
+
+### 3. Restart and Verify
+
+Apply your custom environment configuration and check your installation status:
+
+```bash
+# Restart the n8n service to apply env changes
+sudo systemctl restart n8n
+
+# Run the validation suite to verify all components
+sudo bash scripts/verify.sh
+```
+
+The validation suite verifies Node.js, PostgreSQL, systemd status, Playwright/Chromium execution, and external Browserless connectivity.
+
 ## Features
 
 - Bare-metal n8n install for Ubuntu LXC, pinned to a known `N8N_VERSION`.
@@ -109,24 +164,6 @@ Secrets you need before production:
     `-- n8n.service
 ```
 
-## Fresh Install
-
-Run on the Ubuntu 22.04 LXC:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y git
-git clone https://github.com/Kiryuuki/n8n-lxc.git
-cd n8n-lxc
-sudo bash scripts/install.sh
-```
-
-The installer creates `/etc/n8n/n8n.env` from `.env.example`, generates a new `N8N_ENCRYPTION_KEY`, generates a Postgres password, installs n8n, installs Playwright dependencies, and enables the systemd service.
-
-Do not start production until the env file is edited.
-
-The installer also adds `/etc/update-motd.d/99-n8n-lxc`, so opening the LXC shell shows the n8n URL and common commands for status, logs, restart, env editing, update, verify, and backup.
-
 ## If npm Install Was Interrupted
 
 If the first install died with `ECONNRESET` and npm now fails with `Cannot find module 'promise-retry'`, repair NodeSource npm first:
@@ -149,10 +186,10 @@ Do not run `npm install -g npm@latest` as the recovery step. Use the NodeSource 
 
 ## Configure Environment
 
-Edit:
+Edit (creating the parent directory first if it doesn't already exist):
 
 ```bash
-sudo nano /etc/n8n/n8n.env
+sudo mkdir -p /etc/n8n && sudo nano /etc/n8n/n8n.env
 ```
 
 Required production values:
@@ -384,29 +421,49 @@ sudo -u postgres psql -c "\l"
 sudo -u postgres psql -c "\du"
 ```
 
-Playwright failed:
+Playwright installation or runtime failed:
 
-```bash
-sudo apt-get install -y libxcursor1 libpangocairo-1.0-0 libcairo-gobject2 libgdk-pixbuf-2.0-0
-sudo apt-get install -y libgtk-3-0t64 || sudo apt-get install -y libgtk-3-0
-sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH=/home/n8n/.cache/ms-playwright \
-  npx --prefix /opt/n8n/custom playwright install chromium firefox webkit
-sudo npx --prefix /opt/n8n/custom playwright install-deps
-```
+If the automated Playwright installation fails during the initial execution of `sudo bash scripts/install.sh` (e.g. due to interrupted network downloads, package locks, or strict LXC configurations), follow these recovery steps:
 
-Playwright community node cannot find local browser:
+1. **Manually Install Missing System Packages**:
+   Ensure all base OS dependencies for Playwright and Chromium are fully installed:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y libxcursor1 libpangocairo-1.0-0 libcairo-gobject2 libgdk-pixbuf-2.0-0
+   sudo apt-get install -y libgtk-3-0t64 || sudo apt-get install -y libgtk-3-0
+   ```
 
-```bash
-sudo bash scripts/repair-playwright-node.sh
-```
+2. **Trigger Playwright Binary Installation Manually**:
+   Install the required system dependencies and trigger the browser download as the dedicated `n8n` user:
+   ```bash
+   # Install dependencies (as root)
+   sudo npx --prefix /opt/n8n/custom playwright install-deps
 
-The community node checks its package-local browser path under `/opt/n8n/custom/node_modules/n8n-nodes-playwright/dist/nodes/browsers`, not only the normal Playwright cache. The repair script validates that `/opt/n8n/custom` and `/home/n8n` are writable, disables the node's startup browser rebuild script when present, installs or reuses browser files, creates compatibility links, enables the service, and starts n8n.
+   # Download browser binaries (as n8n user)
+   sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH=/home/n8n/.cache/ms-playwright \
+     npx --prefix /opt/n8n/custom playwright install chromium firefox webkit
+   ```
 
-On newer Playwright builds, Chromium may install as `chrome-linux64/chrome` while the community node expects `chrome-linux/chrome`. The repair script creates compatibility symlinks for that folder-name mismatch.
+3. **Resolve Path and Symlink Mismatches**:
+   The `n8n-nodes-playwright` community node expects certain older directory patterns (like `chrome-linux/chrome` instead of newer `chrome-linux64/chrome`) and checks specific package-local paths. Apply our custom compatibility and patching script to align all symlinks and file permissions:
+   ```bash
+   sudo bash scripts/repair-playwright-node.sh
+   ```
 
-`n8n-nodes-playwright` expects the browser cache at `/home/n8n/.cache/ms-playwright` during startup. Do not point `PLAYWRIGHT_BROWSERS_PATH` at `/opt/n8n/ms-playwright` unless you also update the community node setup behavior.
+4. **Mark Playwright Cache as Complete**:
+   To ensure the main installer script does not try to perform the slow browser downloads again, create the verification flag file:
+   ```bash
+   sudo mkdir -p /home/n8n/.cache/ms-playwright
+   sudo touch /home/n8n/.cache/ms-playwright/.install-complete
+   sudo chown -R n8n:n8n /home/n8n/.cache/ms-playwright
+   ```
 
-Playwright downloads are expected on first install and when Playwright browser revisions change. They should not happen on every n8n restart once Chromium, Firefox, and WebKit are already present.
+5. **Resume Automated Setup**:
+   Once Playwright is fully verified, rerun the main installation script to complete any remaining steps (such as PostgreSQL setup or systemd configuration):
+   ```bash
+   sudo bash scripts/install.sh
+   ```
+   Thanks to the built-in cache check, the installer will automatically detect that Playwright is working and skip re-downloading!
 
 Browserless failed:
 
