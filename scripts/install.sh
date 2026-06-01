@@ -180,8 +180,12 @@ install_n8n_and_browser_packages() {
   log "Installing n8n ${N8N_VERSION}"
   clean_stale_global_n8n_install
   npm_install_with_retry -g "n8n@${N8N_VERSION}"
-  log "Installing Playwright packages and n8n community node"
-  npm_install_with_retry --prefix "${APP_DIR}/custom" playwright playwright-core n8n-nodes-playwright
+  log "Installing Playwright packages"
+  npm_install_with_retry --prefix "${APP_DIR}/custom" playwright playwright-core
+  log "Installing Playwright system dependencies before community-node browser setup"
+  npx --prefix "${APP_DIR}/custom" playwright install-deps chromium firefox webkit
+  log "Installing n8n community Playwright node"
+  npm_install_with_retry --prefix "${APP_DIR}/custom" --ignore-scripts n8n-nodes-playwright
   chown -R n8n:n8n "${APP_DIR}"
 
   log "Checking if Playwright browsers are already installed and operational"
@@ -194,6 +198,9 @@ install_n8n_and_browser_packages() {
     sudo -H -u n8n env PLAYWRIGHT_BROWSERS_PATH="${BROWSERS_DIR}" bash -lc "cd '${APP_DIR}/custom' && npx playwright install chromium firefox webkit"
     touch "${BROWSERS_DIR}/.install-complete"
   fi
+
+  log "Repairing n8n-nodes-playwright browser paths"
+  bash "${REPO_DIR}/scripts/repair-playwright-node.sh" --prestart
 }
 
 configure_postgres() {
