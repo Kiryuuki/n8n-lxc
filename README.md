@@ -159,6 +159,7 @@ Secrets you need before production:
 |   |-- install.sh
 |   |-- browserless-smoke.js
 |   |-- repair-playwright-node.sh
+|   |-- update-n8n.sh
 |   `-- verify.sh
 `-- systemd/
     `-- n8n.service
@@ -195,7 +196,7 @@ sudo mkdir -p /etc/n8n && sudo nano /etc/n8n/n8n.env
 Required production values:
 
 ```env
-N8N_VERSION=2.20.9
+N8N_VERSION=2.22.6
 WEBHOOK_URL=https://n8n.example.com
 N8N_HOST=n8n.example.com
 N8N_EDITOR_BASE_URL=https://n8n.example.com
@@ -366,7 +367,46 @@ Credential import only works if `N8N_ENCRYPTION_KEY` matches the old Windows ins
 
 ## Upgrade n8n
 
-Use a known-good version. Do not blindly run latest on production.
+Use `scripts/update-n8n.sh` for normal n8n version updates. It does not reinstall PostgreSQL, Node.js, Playwright browsers, Browserless tooling, system packages, or the whole LXC setup.
+
+Update to the latest stable npm release:
+
+```bash
+cd /root/n8n-lxc
+git pull origin main
+sudo bash scripts/update-n8n.sh
+```
+
+Update to a pinned version:
+
+```bash
+cd /root/n8n-lxc
+git pull origin main
+sudo N8N_VERSION=2.22.6 bash scripts/update-n8n.sh
+```
+
+By default, the updater:
+
+- backs up Postgres/env/hooks/custom node packages with `scripts/backup.sh`
+- installs only the global `n8n` npm package
+- copies the repo `execution-hooks.js` into `/opt/n8n/execution-hooks.js`
+- updates `N8N_VERSION` in `/etc/n8n/n8n.env`
+- restarts `n8n`
+- runs `scripts/verify.sh`
+
+Optional fast flags:
+
+```bash
+sudo SKIP_BACKUP=1 RUN_VERIFY=0 N8N_VERSION=2.22.6 bash scripts/update-n8n.sh
+```
+
+Use those only when you already have a fresh backup and are doing a quick patch update.
+
+Use `scripts/install.sh` only for first install, broken base setup repair, Node.js reinstall, Playwright/browser dependency repair, Postgres/systemd setup, or full LXC reprovisioning.
+
+Do not blindly update production without a backup. n8n upgrades can run database migrations.
+
+## Full Setup Upgrade
 
 1. Check the target version against the n8n release notes and confirm community nodes support it.
 2. Pull the latest LXC repo changes:
@@ -382,16 +422,16 @@ git pull origin main
 sudo bash scripts/backup.sh
 ```
 
-4. Run the installer with an explicit version:
+4. Run the full installer with an explicit version:
 
 ```bash
-sudo N8N_VERSION=2.20.9 bash scripts/install.sh
+sudo N8N_VERSION=2.22.6 bash scripts/install.sh
 ```
 
 5. If the version should become the default for future installs, update `/etc/n8n/n8n.env`:
 
 ```bash
-sudo sed -i 's/^N8N_VERSION=.*/N8N_VERSION=2.20.9/' /etc/n8n/n8n.env
+sudo sed -i 's/^N8N_VERSION=.*/N8N_VERSION=2.22.6/' /etc/n8n/n8n.env
 ```
 
 6. Restart and verify:
