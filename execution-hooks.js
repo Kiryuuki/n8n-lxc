@@ -6,6 +6,56 @@ const SUPABASE_URL = trimTrailingSlash(process.env.SUPABASE_URL || "");
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "";
 const LOG_TABLE = process.env.SUPABASE_EXECUTION_LOG_TABLE || "n8n_execution_logs";
 
+const REDACT_PATTERNS = [
+  { pattern: /EAA[A-Za-z0-9]{20,}/g, label: "FB_TOKEN" },
+  {
+    pattern: /"Authorization"\s*:\s*"Bearer\s+[^"]+"/gi,
+    label: "BEARER_TOKEN",
+    replacement: '"Authorization":"Bearer [REDACTED]"',
+  },
+  {
+    pattern: /"access_token"\s*:\s*"[A-Za-z0-9\-._~+/]{20,}={0,2}"/gi,
+    label: "ACCESS_TOKEN",
+    replacement: '"access_token":"[REDACTED]"',
+  },
+  {
+    pattern: /"page_access_token"\s*:\s*"[^"]{20,}"/gi,
+    label: "PAGE_TOKEN",
+    replacement: '"page_access_token":"[REDACTED]"',
+  },
+  {
+    pattern: /"(apikey|api_key|x-api-key)"\s*:\s*"[^"]{16,}"/gi,
+    label: "API_KEY",
+    replacement: '"$1":"[REDACTED]"',
+  },
+];
+
+// Redact known sensitive patterns from JSON-serializable hook data.
+function sanitize(data) {
+  if (data == null) return null;
+
+  if (typeof data === "string") return redactString(data);
+
+  const str = redactString(JSON.stringify(data));
+
+  try {
+    return JSON.parse(str);
+  } catch {
+    return { _sanitized: true, _error: "Failed to re-parse after redaction" };
+  }
+}
+
+function redactString(value) {
+  let str = value;
+
+  for (const { pattern, label, replacement } of REDACT_PATTERNS) {
+    const rep = replacement ?? `[REDACTED_${label}]`;
+    str = str.replace(pattern, rep);
+  }
+
+  return str;
+}
+
 function trimTrailingSlash(value) {
   return value.replace(/\/+$/, "");
 }
@@ -34,16 +84,27 @@ function getDurationMs(startedAt, finishedAt) {
 function buildLogData(run, workflowData, executionId) {
   const startedAt = toIso(run.startedAt) || new Date().toISOString();
   const finishedAt = toIso(run.stoppedAt) || new Date().toISOString();
+  const nodeCount = Array.isArray(workflowData.nodes) ? workflowData.nodes.length : null;
+  const errorMessage = run.data?.resultData?.error?.message
+    ? redactString(String(run.data.resultData.error.message)).substring(0, 500)
+    : null;
 
   return {
     execution_id: getExecutionId(run, executionId),
     workflow_id: String(workflowData.id || ""),
     workflow_name: String(workflowData.name || "Untitled workflow"),
     status: getStatus(run),
+    finished: true,
     started_at: startedAt,
     finished_at: finishedAt,
     duration_ms: getDurationMs(startedAt, finishedAt),
     mode: run.mode ? String(run.mode) : null,
+    node_count: nodeCount,
+    error_message: errorMessage,
+    // Full execution/workflow JSON can include raw node I/O and secrets.
+    // If needed later, store only sanitized subsets with sanitize().
+    // execution_data: sanitize(run.data?.resultData?.runData ?? null),
+    // workflow_data: sanitize(workflowData ?? null),
   };
 }
 
@@ -55,6 +116,7 @@ function buildReadyPingData() {
     workflow_id: "system",
     workflow_name: "__hook_healthcheck",
     status: "success",
+    finished: true,
     started_at: now,
     finished_at: now,
     duration_ms: 0,

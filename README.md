@@ -366,16 +366,50 @@ Credential import only works if `N8N_ENCRYPTION_KEY` matches the old Windows ins
 
 ## Upgrade n8n
 
-Test before production upgrade:
+Use a known-good version. Do not blindly run latest on production.
+
+1. Check the target version against the n8n release notes and confirm community nodes support it.
+2. Pull the latest LXC repo changes:
+
+```bash
+cd /root/n8n-lxc
+git pull origin main
+```
+
+3. Back up Postgres, env, hooks, and custom node packages:
 
 ```bash
 sudo bash scripts/backup.sh
+```
+
+4. Run the installer with an explicit version:
+
+```bash
 sudo N8N_VERSION=2.20.9 bash scripts/install.sh
+```
+
+5. If the version should become the default for future installs, update `/etc/n8n/n8n.env`:
+
+```bash
+sudo sed -i 's/^N8N_VERSION=.*/N8N_VERSION=2.20.9/' /etc/n8n/n8n.env
+```
+
+6. Restart and verify:
+
+```bash
 sudo systemctl restart n8n
 sudo bash scripts/verify.sh
 ```
 
-Use a known-good version. Do not blindly run latest on production.
+7. Confirm the running version and service logs:
+
+```bash
+n8n --version
+sudo systemctl status n8n --no-pager
+sudo journalctl -u n8n -n 120 --no-pager
+```
+
+If verification fails, do not continue using the upgraded instance. Roll back the package and restore the backup if the database was migrated.
 
 ## Rollback
 
